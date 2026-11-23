@@ -1,0 +1,31 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||undefined,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1440,height:900}});
+const url=process.env.TEST_URL||'http://localhost:5173';
+mkdirSync('.artifacts',{recursive:true});
+try{
+  let release;const gate=new Promise(r=>release=r);
+  await page.route('**/models/player_Blue.glb',async route=>{await gate;await route.continue()});
+  await page.goto(url,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.querySelector('#loadingProgress').value>0);
+  assert(await page.locator('#loadingScreen').isVisible());assert(await page.locator('#app').evaluate(e=>e.inert));assert(await page.locator('#startBtn').isDisabled());
+  assert(await page.locator('.loading-art > img').evaluate(e=>e.complete&&e.naturalWidth>0));
+  await page.screenshot({path:'.artifacts/loading-desktop.png'});
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.artifacts/loading-mobile.png'});
+  release();
+  await page.waitForFunction(()=>document.querySelector('#loadingScreen').hidden,null,{timeout:60000});
+  assert.equal(await page.locator('#loadingProgress').evaluate(e=>e.value),100);assert.equal(await page.locator('#app').evaluate(e=>e.inert),false);
+  await page.unroute('**/models/player_Blue.glb');
+  await page.route('**/models/player_Blue.glb',route=>route.abort());
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.querySelector('#loadingScreen').classList.contains('load-error'));
+  assert(await page.locator('#loadingRetry').isVisible());assert(await page.locator('#startBtn').isDisabled());
+  await page.screenshot({path:'.artifacts/loading-error.png'});
+  await page.unroute('**/models/player_Blue.glb');
+  await page.click('#loadingRetry');
+  await page.waitForFunction(()=>document.querySelector('#loadingScreen').hidden,null,{timeout:60000});
+  await page.click('#startBtn');assert(await page.locator('#startOverlay').isHidden());
+  console.log('PASS: delayed loading/progress, desktop/mobile artwork, blocked interaction, asset failure, retry and start.');
+}finally{await browser.close()}

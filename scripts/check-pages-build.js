@@ -24,9 +24,10 @@ for (const file of ['player_Blue.glb', 'texture_player_Blue_512.png', 'badminton
   assert.equal(readFileSync(`dist/models/${file}`).length, readFileSync(`Models/${file}`).length, `Incomplete 3D asset: ${file}`);
 }
 assert(js.includes(`${base}models/`), '3D model URLs must use the deployment base');
-for (const [name,source] of [['stadium.png','WonderLab Motion Badminton Stadium.png'],['logo.png','09_game_logo.png']]) {
+for (const [name,source] of [['stadium.png','WonderLab Motion Badminton Stadium.png'],['logo.png','09_game_logo.png'],['loading.png','WonderLab Motion Badminton Loading Screen.png']]) {
   assert.deepEqual(readFileSync(`dist/ui/${name}`),readFileSync(`UI/${source}`),`Missing or altered UI asset: ${name}`);
 }
 assert(js.includes(`${base}ui/stadium.png`), 'Stadium background must use the Pages base path');
+assert(html.includes(`${base}ui/loading.png`), 'Loading artwork must use the Pages base path');
 assert(html.includes(`${base}ui/logo.png`), 'Logo must use the Pages base path');
 console.log(`Deployment checks passed for ${base}: compiled app, pose runtime, 3D models, stadium and logo.`);

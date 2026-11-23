@@ -55,7 +55,9 @@ export function createArena(canvas, report) {
   loader.register(parser=>({name:'KHR_materials_pbrSpecularGlossiness',beforeRoot(){for(const m of parser.json.materials||[]){const old=m.extensions?.KHR_materials_pbrSpecularGlossiness;if(old)m.pbrMetallicRoughness={baseColorFactor:old.diffuseFactor,baseColorTexture:old.diffuseTexture,metallicFactor:0,roughnessFactor:.8};}}}));
   let actors=[],ready=false,failed=false,contextLost=false;
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();contextLost=true;report('Graphics interrupted. Reload the page to restore 3D.',true)});
-  const load=name=>loader.loadAsync(asset(name));
+  let loadedAssets=0;
+  const track=(promise,label)=>promise.then(result=>{loadedAssets++;if(!failed)report(`${label} ready · ${loadedAssets}/5 assets`,false,loadedAssets*18);return result;});
+  const load=(name,label)=>track(loader.loadAsync(asset(name)),label);
   function bounds(o){o.updateMatrixWorld(true);return new THREE.Box3().setFromObject(o,true)}
   function prepareRacket(source){const r=source.clone(true);const outer=new THREE.Group();outer.add(r);let b=bounds(r),size=b.getSize(V(0,0,0));if(size.z>size.y&&size.z>size.x)r.rotation.x=Math.PI/2;else if(size.x>size.y)r.rotation.z=Math.PI/2;b=bounds(r);size=b.getSize(V(0,0,0));r.scale.multiplyScalar(.88/size.y);b=bounds(r);const center=b.getCenter(V(0,0,0));r.position.sub(V(center.x,b.min.y,center.z));return outer;}
   function actor(source,racket,texture,isBot){const root=new THREE.Group();const model=clone(source);root.add(model);let b=bounds(model);model.scale.multiplyScalar(2.2/b.getSize(V(0,0,0)).y);b=bounds(model);const center=b.getCenter(V(0,0,0));model.position.sub(V(center.x,b.min.y,center.z));const bones={};model.traverse(o=>{if(o.isBone)bones[o.name.replace('mixamorig','').replace(':','')]={bone:o,rest:o.quaternion.clone()};if(o.isMesh){o.castShadow=true;o.frustumCulled=false;o.material=o.material.clone();o.material.map=texture;o.material.roughness=.85;}});
@@ -64,11 +66,11 @@ export function createArena(canvas, report) {
     const r=prepareRacket(racket);scene.add(r);
     return {root,model,bones,racket:r,ring,previous:0,isBot};
   }
-  async function init(){try{report('Loading your 3D models…');const [court,player,bat,texture,stadium]=await Promise.all([load('batminton_court.glb'),load('player_Blue.glb'),load('badminton_bat.glb'),new THREE.TextureLoader().loadAsync(asset('texture_player_Blue_512.png')),new THREE.TextureLoader().loadAsync(`${import.meta.env.BASE_URL}ui/stadium.png`)]);stadiumTexture=stadium;stadium.colorSpace=THREE.SRGBColorSpace;scene.background=stadium;updateBackdrop();texture.colorSpace=THREE.SRGBColorSpace;texture.flipY=false;
+  async function init(){try{report('Loading your 3D models…');const [court,player,bat,texture,stadium]=await Promise.all([load('batminton_court.glb','Court'),load('player_Blue.glb','Player'),load('badminton_bat.glb','Racket'),track(new THREE.TextureLoader().loadAsync(asset('texture_player_Blue_512.png')),'Player texture'),track(new THREE.TextureLoader().loadAsync(`${import.meta.env.BASE_URL}ui/stadium.png`),'Stadium')]);stadiumTexture=stadium;stadium.colorSpace=THREE.SRGBColorSpace;scene.background=stadium;updateBackdrop();texture.colorSpace=THREE.SRGBColorSpace;texture.flipY=false;
     const redCanvas=document.createElement('canvas');redCanvas.width=texture.image.width;redCanvas.height=texture.image.height;const rc=redCanvas.getContext('2d');rc.drawImage(texture.image,0,0);const pixels=rc.getImageData(0,0,redCanvas.width,redCanvas.height);for(let i=0;i<pixels.data.length;i+=4){const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];if(b>r*1.2&&b>g*1.08&&b>60){pixels.data[i]=b;pixels.data[i+1]=r*.8;pixels.data[i+2]=g*.7;}}rc.putImageData(pixels,0,0);const redTexture=new THREE.CanvasTexture(redCanvas);redTexture.colorSpace=THREE.SRGBColorSpace;redTexture.flipY=false;
     actors=[actor(player.scene,bat.scene,texture,false),actor(player.scene,bat.scene,redTexture,true)];
     const courtRoot=new THREE.Group();courtRoot.add(court.scene);const floor=court.scene.getObjectByName('Object_12');const floorBox=bounds(floor||court.scene),size=floorBox.getSize(V(0,0,0));courtRoot.scale.set(7.4/size.x,6.2,14.4/size.z);courtRoot.updateMatrixWorld(true);const scaled=bounds(floor||court.scene),center=scaled.getCenter(V(0,0,0));courtRoot.position.set(-center.x,-scaled.max.y-.006,-center.z);court.scene.traverse(o=>{if(o.isMesh){o.receiveShadow=true;if(o===floor)o.material=blue;}});scene.add(courtRoot);fallback.visible=false;netGroup.visible=false;
-    ready=true;report('3D arena ready · Your models, in motion');
+    ready=true;report('3D arena ready · Your models, in motion',false,100);
   }catch(error){failed=true;console.error('3D model loading failed',error);report('A 3D asset could not load. Reload to retry.',true)}}
   init();
   const offset=new THREE.Quaternion();
