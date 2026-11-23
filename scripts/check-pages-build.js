@@ -31,3 +31,7 @@ assert(js.includes(`${base}ui/stadium.png`), 'Stadium background must use the Pa
 assert(html.includes(`${base}ui/loading.png`), 'Loading artwork must use the Pages base path');
 assert(html.includes(`${base}ui/logo.png`), 'Logo must use the Pages base path');
 console.log(`Deployment checks passed for ${base}: compiled app, pose runtime, 3D models, stadium and logo.`);
+
+for(const file of ['crowd-cheering.mp3','crowd-disappointment.mp3']) {
+  assert.deepEqual(readFileSync(`dist/sound/${file}`),readFileSync(`Sound/${file}`),`Missing or altered sound: ${file}`);
+}
