@@ -1,6 +1,17 @@
 # Rally — motion badminton
 
-A browser-only badminton prototype with a perspective Canvas court, a simulated AI opponent, local MediaPipe pose tracking and keyboard/mouse fallback. No account or backend required.
+A browser-only 3D badminton prototype built with Three.js, the uploaded GLB court/player/racket models, a simulated AI opponent, local MediaPipe pose tracking and keyboard/mouse fallback. No account or backend required. WebGL2 and browser hardware acceleration are recommended.
+
+## 3D assets and animations
+
+- `Models/player_Blue.glb`: rigged Mixamo character, cloned with independent skeletons for both players.
+- `Models/texture_player_Blue_512.png`: explicitly applied to the player. Blue regions are recolored at runtime for the red AI without recoloring skin/hair.
+- `Models/badminton_bat.glb`: normalized racket follows each character's right-hand position.
+- `Models/batminton_court.glb`: normalized floor/net geometry; legacy specular/glossiness diffuse textures are mapped for modern Three.js. The floor uses a blue arena material with regulation-layout service lines.
+- Runtime procedural bone animation adds breathing/ready stance, side-step legs, a raised-arm swing and finger grip. These are **code-driven animations, not baked clips written into the original GLB**. Original uploaded files are unchanged.
+- The surrounding stadium (roof beams, seating, lighting, trees), shuttle, cyan trail, shadows and blue/red HUD are rendered locally. The reference image guides the design; it is not used as a fake playable background.
+
+`npm run dev` / `npm run build` copy the four required assets into ignored `public/models/`. They are published under the Vite base path; screenshots and duplicate generated assets are not committed. If a required asset fails to load, the start button stays disabled and the HUD shows an error rather than starting an invisible match.
 
 ## Run
 
@@ -42,4 +53,13 @@ Camera frames and pose inference remain in the browser. Switching back to keyboa
 
 This is an arcade prototype, not a full badminton simulation: shuttle trajectories, strokes, serving and player movement are simplified. The 11-point mode is a house-rule quick match; 21-point scoring follows the standard target/deuce/cap. Motion thresholds need testing/tuning on real webcams, lighting and body positions. Camera access may need the preview opened in a separate tab if an embedded preview blocks permissions. Keyboard play works without a webcam.
 
-Scoring has automated Node tests. Live webcam recognition requires manual testing on a camera-equipped device; it cannot be validated in this headless workspace.
+Scoring, GLB integrity, expected rig bones and texture format have automated Node tests. The build verifier also checks the deployed 3D assets and their subpath URLs.
+
+For browser smoke tests, start the dev server, then run:
+
+```sh
+npx playwright install chromium
+node scripts/browser-smoke.mjs
+```
+
+`TEST_URL` can target a deployed subpath or local Vite preview. `CHROMIUM_EXECUTABLE_PATH` optionally selects an existing Chromium executable. Screenshots go to ignored `.artifacts/`. The smoke test covers model loading, start, keyboard movement/swing input, pause/resume, settings, restart, camera-denial fallback, and mobile overflow. It does not validate the physical accuracy of motion tracking or stroke mechanics. Live webcam recognition still requires manual testing on a camera-equipped device.
