@@ -1,4 +1,4 @@
-# Rally — motion badminton
+# WonderLab — motion badminton
 
 A browser-only 3D badminton prototype built with Three.js, the uploaded GLB court/player/racket models, a simulated AI opponent, local MediaPipe pose tracking and keyboard/mouse fallback. No account or backend required. WebGL2 and browser hardware acceleration are recommended.
 
@@ -9,7 +9,10 @@ A browser-only 3D badminton prototype built with Three.js, the uploaded GLB cour
 - `Models/badminton_bat.glb`: normalized racket follows each character's right-hand position.
 - `Models/batminton_court.glb`: normalized floor/net geometry; legacy specular/glossiness diffuse textures are mapped for modern Three.js. The floor uses a blue arena material with regulation-layout service lines.
 - Runtime procedural bone animation adds breathing/ready stance, side-step legs, a raised-arm swing and finger grip. These are **code-driven animations, not baked clips written into the original GLB**. Original uploaded files are unchanged.
-- The surrounding stadium (roof beams, seating, lighting, trees), shuttle, cyan trail, shadows and blue/red HUD are rendered locally. The reference image guides the design; it is not used as a fake playable background.
+- `UI/WonderLab Motion Badminton Stadium.png` is now the actual stadium backdrop. The original image is copied unchanged to `public/ui/stadium.png` and displayed with aspect-preserving cover cropping. The previous procedural hall is removed; the court, characters, net, racket, shuttle, trail and shadows remain live 3D in front of the image.
+- `UI/09_game_logo.png` is the header logo. Boards `01`–`08` and `10` are visual references: CSS/HTML recreates their neon blue panels, blue/red scoreboard, yellow Start Game button, tips and Settings/Help/Home controls. Their example scores, online statuses and text are **not** pasted over the live game.
+- The Mission board tracks a match win, seven player points and a five-shot rally; it resets with the match and does not change scoring.
+- Default camera: eye-level at 2.15 world units behind the blue player, with a slight shoulder offset and smoothed lateral follow so the head is not directly in the shuttle sightline. Portrait uses more distance but retains eye height. **Settings → Camera view → Court overview** restores the wider, higher camera. The stadium is a 2D backdrop, not a 360-degree environment.
 
 `npm run dev` / `npm run build` copy the four required assets into ignored `public/models/`. They are published under the Vite base path; screenshots and duplicate generated assets are not committed. If a required asset fails to load, the start button stays disabled and the HUD shows an error rather than starting an invisible match.
 
@@ -41,7 +44,7 @@ For a custom domain served at the root, use `VITE_BASE_PATH=/` for both the buil
 
 ## Play
 
-- Select **Let's play**. A/D or arrow keys move; Space swings. Alternatively move the mouse over the court and click to swing.
+- Select **Start Game**. A/D or arrow keys move; Space swings. Alternatively move the mouse over the court and click to swing.
 - Wait until the shuttle is near the racket: a swing is active for 0.5 seconds, but the return happens only at the shared racket-contact plane (with limited lateral reach), not halfway down the court. A miss continues past the player and falls before the point is awarded.
 - **Aim:** hold Q/E (or a left/right movement key) when pressing Space for a left/right angled return; no direction gives a straight shot. With the mouse, move left/right just before clicking. In webcam mode, the horizontal direction of the swinging wrist controls the angle; an upward swing with little sideways motion goes straight.
 - AI has difficulty-specific reaction delay, movement speed and targeting error. It returns reachable shots, but a wide shot or a change of direction can beat it. Your shots never auto-target the AI's position.

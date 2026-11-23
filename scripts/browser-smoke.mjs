@@ -12,6 +12,11 @@ try {
   await page.goto(process.env.TEST_URL||'http://localhost:5173');
   await page.waitForFunction(()=>document.querySelector('#assetStatus').textContent.startsWith('3D arena ready'),null,{timeout:60000});
   assert(await page.locator('#startBtn').isEnabled());
+  assert(await page.locator('.brand img').evaluate(img=>img.complete&&img.naturalWidth>0),'WonderLab logo did not load');
+  assert.equal(await page.locator('#cameraView').inputValue(),'eye');
+  assert.equal(await page.locator('.missions .complete').count(),0);
+  await page.click('#helpBtn');assert(await page.locator('#guideDialog').isVisible());
+  await page.click('#guideDialog .close');assert(await page.locator('#guideDialog').isHidden());
   await page.screenshot({path:'.artifacts/desktop.png',fullPage:true});
   await page.click('#startBtn');
   assert(await page.locator('#startOverlay').isHidden());
@@ -21,7 +26,10 @@ try {
   await page.screenshot({path:'.artifacts/play.png',fullPage:true});
   await page.click('#pause');assert.equal(await page.locator('#gameState').textContent(),'MATCH IN PLAY');
   await page.click('#settings');
-  await page.selectOption('#difficulty','pro');await page.selectOption('#points','21');await page.click('#applySettings');
+  await page.selectOption('#difficulty','pro');await page.selectOption('#points','21');await page.selectOption('#cameraView','overview');await page.click('#applySettings');
+  assert((await page.locator('.court-label').textContent()).includes('COURT OVERVIEW'));
+  await page.click('#settings');await page.selectOption('#cameraView','eye');await page.click('#applySettings');
+  assert((await page.locator('.court-label').textContent()).includes('EYE-LEVEL VIEW'));
   assert.equal(await page.locator('#targetLabel').textContent(),'FIRST TO 21');
   assert.equal(await page.locator('#youScore').textContent(),'00');
   assert(await page.locator('#startOverlay').isVisible());
