@@ -99,7 +99,9 @@ export function createArena(canvas, report) {
         const ep=elbow.getWorldPosition(V(0,0,0)),hp=hand.getWorldPosition(V(0,0,0));
         const upper=origin.distanceTo(ep),lower=ep.distanceTo(hp);
         const end=V(contact.x,contact.y,contact.z);
-        let direction=V(side*.2,.8,forward*.3).normalize();
+        // Low drives use a sideways racket face and an outboard grip;
+        // overheads retain the raised racket rather than folding the wrist behind the torso.
+        let direction=(contact.y<2.2?V(-side*.65,.35,forward*.35):V(side*.2,.8,forward*.3)).normalize();
         let grip=end.clone().addScaledVector(direction,-.70);
         if(grip.distanceTo(origin)>upper+lower-.005){direction=end.clone().sub(origin).normalize();grip=end.clone().addScaledVector(direction,-.70);}
         const axis=grip.clone().sub(origin),distance=axis.length();axis.normalize();
@@ -136,7 +138,7 @@ export function createArena(canvas, report) {
         shuttle.rotation.x=s.vz>0?-.8:.8;
         if(!paused){history.push(shuttle.position.clone());if(history.length>18)history.shift();}
         trailGeometry.setFromPoints(history);
-        if(s.elapsed<.09&&s.missed===undefined){flash.visible=true;flash.position.set(s.startX*3.05,CONTACT.height,6.7-s.startZ*13.4);flash.scale.setScalar(1+s.elapsed*8);flash.material.opacity=.8*(1-s.elapsed/.09);}
+        if(s.elapsed<.09&&s.missed===undefined){flash.visible=true;flash.position.set(s.startX*3.05,s.startY,6.7-s.startZ*13.4);flash.scale.setScalar(1+s.elapsed*8);flash.material.opacity=.8*(1-s.elapsed/.09);}
       }else history.length=0;
       renderer.render(scene,camera);
     },
