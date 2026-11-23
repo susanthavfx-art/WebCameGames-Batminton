@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
 import {SWING_DURATION, CONTACT} from './gameplay.js';
+import {cameraFrame,coverCrop} from './view.js';
 
 const asset = name => `${import.meta.env.BASE_URL}models/${name}`;
 const V = (x,y,z) => new THREE.Vector3(x,y,z);
@@ -15,9 +16,12 @@ export function createArena(canvas, report) {
   renderer.toneMappingExposure = 1.3;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#162b59');
-  scene.fog = new THREE.Fog('#20385d', 24, 65);
+  let stadiumTexture;
+  let viewMode='eye',followX=0;
+  function updateBackdrop(){if(!stadiumTexture)return;const crop=coverCrop(stadiumTexture.image.width/stadiumTexture.image.height,camera.aspect);stadiumTexture.repeat.set(crop.x,crop.y);stadiumTexture.offset.set(crop.offsetX,crop.offsetY);}
+  function updateCamera(){const frame=cameraFrame(camera.aspect,followX,viewMode);camera.position.set(frame.x,frame.y,frame.z);camera.fov=frame.fov;camera.lookAt(frame.lookX,frame.lookY,frame.lookZ);camera.updateProjectionMatrix();}
   const camera = new THREE.PerspectiveCamera(48,1,.1,100);
-  camera.position.set(0,3.8,13.8); camera.lookAt(0,1.25,-.6);
+  updateCamera();
   scene.add(new THREE.HemisphereLight(0xb6e5ff,0x41445c,2.5));
   const sun = new THREE.DirectionalLight(0xfff0d8,3);
   sun.position.set(-6,14,6); sun.castShadow=true;
@@ -27,7 +31,7 @@ export function createArena(canvas, report) {
   const mesh = (geometry,material,x=0,y=0,z=0)=>{const o=new THREE.Mesh(geometry,material);o.position.set(x,y,z);o.receiveShadow=true;scene.add(o);return o};
   const box=(x,y,z,w,h,d,m)=>mesh(new THREE.BoxGeometry(w,h,d),m,x,y,z);
   const navy=mat('#122747'),steel=mat('#59769b',{metalness:.5}),blue=mat('#167aca');
-  box(0,-.25,0,40,.3,50,mat('#263e64'));
+  // The supplied stadium image replaces the old hall and oversized ground plane.
   const fallback = new THREE.Group();scene.add(fallback);
   const courtFloor=box(0,-.07,0,7.4,.12,14.4,blue);fallback.attach(courtFloor);
   // White service boxes match the simulation's normalized playing area.
@@ -42,22 +46,6 @@ export function createArena(canvas, report) {
   for(let y=.7;y<=1.52;y+=.1)netPoints.push(-3.25,y,0,3.25,y,0);
   const net=new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(netPoints,3)),new THREE.LineBasicMaterial({color:'#bed6ed',transparent:true,opacity:.65}));netGroup.add(net);
   const tape=box(0,1.54,0,6.5,.055,.025,chalk);netGroup.attach(tape);
-  // A fully rendered glass-roof sports hall, not a static screenshot backdrop.
-  for(const side of [-1,1]){
-    for(let z=-18;z<=16;z+=6){box(side*10,5,z,.22,10,.25,steel);box(side*10,9,z, .35,.2,5.8,steel);const beam=box(side*5,10.4,z,11,.18,.18,steel);beam.rotation.z=side*-.25;}
-    for(let row=0;row<4;row++){
-      box(side*(7.8+row*.65),row*.45+.2,-3,.7,.3,19,navy);
-      for(let z=-11;z<6;z+=.85)box(side*(7.8+row*.65),row*.45+.55,z,.48,.32,.55,mat(row%2?'#246eaa':'#704d9b'));
-    }
-    for(let z=-11;z<=9;z+=10){box(side*6.5,.3,z,.8,.6,.8,navy);mesh(new THREE.CylinderGeometry(.1,.14,2),mat('#655447'),side*6.5,1.3,z);for(let i=0;i<5;i++)mesh(new THREE.IcosahedronGeometry(.8,1),mat(i%2?'#3f977c':'#207363'),side*6.5+Math.sin(i*2)*.4,2.4+i*.25,z+Math.cos(i)*.3);}
-    const rail=box(side*5.6,.8,-2,.06,.06,22,steel);
-    for(let z=-12;z<9;z+=3)box(side*5.6,.4,z,.05,.8,.05,steel);
-  }
-  const glass=mat('#88bce6',{transparent:true,opacity:.14,metalness:.1,side:THREE.DoubleSide,depthWrite:false});
-  for(let z=-18;z<15;z+=6){const pane=box(0,11.6,z,20,.03,5.8,glass);for(const x of [-6,0,6])box(x,10.7,z,.09,.09,6,mat('#87c9ff',{emissive:'#3986b7',emissiveIntensity:.6}));}
-  box(0,3,-16,22,6,.4,navy);
-  const signCanvas=document.createElement('canvas');signCanvas.width=1024;signCanvas.height=256;const sc=signCanvas.getContext('2d');sc.fillStyle='#0c2456';sc.fillRect(0,0,1024,256);sc.fillStyle='#5ceaff';sc.font='bold italic 90px sans-serif';sc.textAlign='center';sc.fillText('RALLY ARENA',512,127);sc.fillStyle='#a2bbec';sc.font='24px sans-serif';sc.fillText('MOVE. SWING. MAKE IT YOUR GAME.',512,186);
-  mesh(new THREE.PlaneGeometry(8,2),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(signCanvas)}),0,4,-15.7);
   const shuttle=new THREE.Group();scene.add(shuttle);
   const feather=new THREE.Mesh(new THREE.ConeGeometry(.14,.32,12,1,true),mat('#f7fcff',{side:THREE.DoubleSide}));feather.rotation.z=Math.PI;feather.position.y=.16;shuttle.add(feather);
   shuttle.add(new THREE.Mesh(new THREE.SphereGeometry(.065,10,8),mat('#e8faff',{emissive:'#43bfff',emissiveIntensity:.5})));
@@ -76,7 +64,7 @@ export function createArena(canvas, report) {
     const r=prepareRacket(racket);scene.add(r);
     return {root,model,bones,racket:r,ring,previous:0,isBot};
   }
-  async function init(){try{report('Loading your 3D models…');const [court,player,bat,texture]=await Promise.all([load('batminton_court.glb'),load('player_Blue.glb'),load('badminton_bat.glb'),new THREE.TextureLoader().loadAsync(asset('texture_player_Blue_512.png'))]);texture.colorSpace=THREE.SRGBColorSpace;texture.flipY=false;
+  async function init(){try{report('Loading your 3D models…');const [court,player,bat,texture,stadium]=await Promise.all([load('batminton_court.glb'),load('player_Blue.glb'),load('badminton_bat.glb'),new THREE.TextureLoader().loadAsync(asset('texture_player_Blue_512.png')),new THREE.TextureLoader().loadAsync(`${import.meta.env.BASE_URL}ui/stadium.png`)]);stadiumTexture=stadium;stadium.colorSpace=THREE.SRGBColorSpace;scene.background=stadium;updateBackdrop();texture.colorSpace=THREE.SRGBColorSpace;texture.flipY=false;
     const redCanvas=document.createElement('canvas');redCanvas.width=texture.image.width;redCanvas.height=texture.image.height;const rc=redCanvas.getContext('2d');rc.drawImage(texture.image,0,0);const pixels=rc.getImageData(0,0,redCanvas.width,redCanvas.height);for(let i=0;i<pixels.data.length;i+=4){const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];if(b>r*1.2&&b>g*1.08&&b>60){pixels.data[i]=b;pixels.data[i+1]=r*.8;pixels.data[i+2]=g*.7;}}rc.putImageData(pixels,0,0);const redTexture=new THREE.CanvasTexture(redCanvas);redTexture.colorSpace=THREE.SRGBColorSpace;redTexture.flipY=false;
     actors=[actor(player.scene,bat.scene,texture,false),actor(player.scene,bat.scene,redTexture,true)];
     const courtRoot=new THREE.Group();courtRoot.add(court.scene);const floor=court.scene.getObjectByName('Object_12');const floorBox=bounds(floor||court.scene),size=floorBox.getSize(V(0,0,0));courtRoot.scale.set(7.4/size.x,6.2,14.4/size.z);courtRoot.updateMatrixWorld(true);const scaled=bounds(floor||court.scene),center=scaled.getCenter(V(0,0,0));courtRoot.position.set(-center.x,-scaled.max.y-.006,-center.z);court.scene.traverse(o=>{if(o.isMesh){o.receiveShadow=true;if(o===floor)o.material=blue;}});scene.add(courtRoot);fallback.visible=false;netGroup.visible=false;
@@ -134,10 +122,12 @@ export function createArena(canvas, report) {
   let lastFlight=-1;
   const flash=mesh(new THREE.SphereGeometry(.13,12,8),new THREE.MeshBasicMaterial({color:'#bafaff',transparent:true,opacity:.8}));flash.visible=false;
   return {
-    resize(w,h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.set(0,w/h<1?5.8:3.8,w/h<1?20:13.8);camera.lookAt(0,1.25,-.6);camera.updateProjectionMatrix()},
+    resize(w,h){renderer.setSize(w,h,false);camera.aspect=w/Math.max(1,h);updateCamera();updateBackdrop()},
+    setView(mode){viewMode=mode==='overview'?'overview':'eye';updateCamera()},
     render(state){
       if(contextLost)return;
       const {player,bot,clock,swingTime,botSwing,shuttle:s,dt,paused,contacts=[]}=state;
+      if(!paused){followX+=(player-followX)*(1-Math.exp(-dt*4));updateCamera();}
       actors.forEach((a,i)=>pose(a,i?bot:player,i?-5.1:5.6,clock,i?botSwing:swingTime,paused?0:dt,contacts[i]));
       shuttle.visible=!!s;trail.visible=!!s;flash.visible=false;
       if(s){

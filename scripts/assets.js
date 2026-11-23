@@ -5,3 +5,7 @@ mkdirSync('public/models',{recursive:true});
 for (const file of ['player_Blue.glb','texture_player_Blue_512.png','badminton_bat.glb','batminton_court.glb']) {
   cpSync(`Models/${file}`, `public/models/${file}`);
 }
+
+mkdirSync('public/ui',{recursive:true});
+cpSync('UI/WonderLab Motion Badminton Stadium.png','public/ui/stadium.png');
+cpSync('UI/09_game_logo.png','public/ui/logo.png');
