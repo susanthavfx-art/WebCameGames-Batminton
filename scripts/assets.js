@@ -9,3 +9,5 @@ for (const file of ['player_Blue.glb','texture_player_Blue_512.png','badminton_b
 mkdirSync('public/ui',{recursive:true});
 cpSync('UI/WonderLab Motion Badminton Stadium.png','public/ui/stadium.png');
 cpSync('UI/09_game_logo.png','public/ui/logo.png');
+
+cpSync('UI/WonderLab Motion Badminton Loading Screen.png','public/ui/loading.png');

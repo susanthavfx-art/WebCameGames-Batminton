@@ -75,3 +75,11 @@ node scripts/rally-smoke.mjs
 The rally smoke test drives the real game with keyboard events, captures a contact-frame screenshot, and checks that a right-angle return can beat Casual AI for a 1–0 score. Unit tests additionally cover early/distant-hit rejection, direction selection, reachable vs. unreachable AI shots, reaction delay and contact positions at 30/60/120 FPS.
 
 `TEST_URL` can target a deployed subpath or local Vite preview. `CHROMIUM_EXECUTABLE_PATH` optionally selects an existing Chromium executable. Screenshots go to ignored `.artifacts/`. The smoke test covers model loading, start, keyboard movement/swing input, pause/resume, settings, restart, camera-denial fallback, and mobile overflow. It does not validate the physical accuracy of motion tracking or stroke mechanics. Live webcam recognition still requires manual testing on a camera-equipped device.
+
+## Loading screen
+
+The supplied `UI/WonderLab Motion Badminton Loading Screen.png` is copied unchanged to `public/ui/loading.png`, preloaded and shown in the initial HTML (before the game JavaScript). Live overlays replace the artwork's printed percent/network/ready labels. Progress reflects completion of five top-level assets (court, player, racket, player texture, stadium), reaching 90% when loaded and 100% only after scene assembly. It is an asset-count indicator, not byte-transfer progress; MediaPipe still loads on demand when the camera is enabled.
+
+The game remains inert behind the screen until ready. It dismisses after the prepared scene has a chance to paint, without an artificial wait. Asset/WebGL errors show a Retry button that reloads the page; slow loading offers Retry after 20 seconds without falsely declaring failure. The artwork uses contain framing on mobile so neither player is cropped. JavaScript-disabled browsers receive a text explanation.
+
+`node scripts/loading-smoke.mjs` (same `TEST_URL` / Chromium environment options as other browser tests) checks delayed assets, progress, desktop/mobile artwork, failure, retry and starting the game.
