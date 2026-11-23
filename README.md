@@ -13,6 +13,21 @@ npm run build
 
 Vite listens on `0.0.0.0:5173`. Build output is in `dist/`. MediaPipe's runtime and models are copied from the npm package before dev/build; generated copies are ignored by Git. Deploy the entire dist directory over HTTPS for camera access.
 
+## GitHub Pages
+
+In repository **Settings → Pages → Build and deployment**, choose **GitHub Actions** as the source. After this change is merged into `main`, the Pages workflow installs dependencies, tests scoring, builds with `/<repository-name>/` as the base URL, verifies the built assets, and deploys **only `dist/`**. Pull requests run the build checks without deploying.
+
+Do not publish the repository root with “Deploy from a branch”: the source HTML requires Vite compilation. JavaScript, CSS, the home link, and local MediaPipe assets all need the repository subpath.
+
+To reproduce the Pages build locally (POSIX shell):
+
+```sh
+VITE_BASE_PATH=/WebCameGames-Batminton/ npm run build
+node scripts/check-pages-build.js
+```
+
+For a custom domain served at the root, use `VITE_BASE_PATH=/` for both the build and verification steps instead. After a successful deployment, hard-refresh the site (Ctrl+Shift+R) before testing camera permissions.
+
 ## Play
 
 - Select **Let's play**. A/D or arrow keys move; Space swings. Alternatively move the mouse over the court and click to swing.
