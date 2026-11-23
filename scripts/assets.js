@@ -11,3 +11,8 @@ cpSync('UI/WonderLab Motion Badminton Stadium.png','public/ui/stadium.png');
 cpSync('UI/09_game_logo.png','public/ui/logo.png');
 
 cpSync('UI/WonderLab Motion Badminton Loading Screen.png','public/ui/loading.png');
+
+mkdirSync('public/sound',{recursive:true});
+for(const file of ['crowd-cheering.mp3','crowd-disappointment.mp3']) {
+  cpSync(`Sound/${file}`,`public/sound/${file}`);
+}
