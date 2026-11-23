@@ -19,4 +19,9 @@ assert(js.includes(`${base}pose/`), 'Pose models must use the deployment base');
 for (const file of ['pose.js', 'pose_landmark_lite.tflite', 'pose_web.binarypb', 'pose_solution_packed_assets.data', 'pose_solution_packed_assets_loader.js', 'pose_solution_simd_wasm_bin.js', 'pose_solution_simd_wasm_bin.wasm', 'pose_solution_simd_wasm_bin.data', 'pose_solution_wasm_bin.js', 'pose_solution_wasm_bin.wasm']) {
   assert(existsSync(`dist/pose/${file}`), `Missing local motion runtime asset: ${file}`);
 }
-console.log(`Deployment checks passed for ${base}: compiled JS/CSS, home link, and local pose runtime.`);
+for (const file of ['player_Blue.glb', 'texture_player_Blue_512.png', 'badminton_bat.glb', 'batminton_court.glb']) {
+  assert(existsSync(`dist/models/${file}`), `Missing deployed 3D asset: ${file}`);
+  assert.equal(readFileSync(`dist/models/${file}`).length, readFileSync(`Models/${file}`).length, `Incomplete 3D asset: ${file}`);
+}
+assert(js.includes(`${base}models/`), '3D model URLs must use the deployment base');
+console.log(`Deployment checks passed for ${base}: compiled JS/CSS, home link, local pose runtime, and 3D models.`);
