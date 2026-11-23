@@ -42,7 +42,10 @@ For a custom domain served at the root, use `VITE_BASE_PATH=/` for both the buil
 ## Play
 
 - Select **Let's play**. A/D or arrow keys move; Space swings. Alternatively move the mouse over the court and click to swing.
-- Hit when the shuttle approaches your player. The bot automatically returns reachable shots.
+- Wait until the shuttle is near the racket: a swing is active for 0.5 seconds, but the return happens only at the shared racket-contact plane (with limited lateral reach), not halfway down the court. A miss continues past the player and falls before the point is awarded.
+- **Aim:** hold Q/E (or a left/right movement key) when pressing Space for a left/right angled return; no direction gives a straight shot. With the mouse, move left/right just before clicking. In webcam mode, the horizontal direction of the swinging wrist controls the angle; an upward swing with little sideways motion goes straight.
+- AI has difficulty-specific reaction delay, movement speed and targeting error. It returns reachable shots, but a wide shot or a change of direction can beat it. Your shots never auto-target the AI's position.
+- The lowered camera gives a more court-level view. Flight endpoints, racket string-bed placement, contact sound, brief flash, and outgoing trail use the same contact point. This is an assisted arcade contact/arm-IK system, not arbitrary mesh-to-mesh collision physics.
 - Enable the camera, grant permission and stand back with your shoulders and hands visible. Body position controls lateral movement; a quick movement of either hand triggers a swing. No physical racket is necessary. Ensure you have a safe, clear space.
 - Settings provide three bot speeds and 11-point quick or 21-point standard matches. Rally scoring, win by two, caps of 15/30 respectively.
 - Pause, restart, optional synthesized hit sounds and court fullscreen are available.
@@ -60,6 +63,9 @@ For browser smoke tests, start the dev server, then run:
 ```sh
 npx playwright install chromium
 node scripts/browser-smoke.mjs
+node scripts/rally-smoke.mjs
 ```
+
+The rally smoke test drives the real game with keyboard events, captures a contact-frame screenshot, and checks that a right-angle return can beat Casual AI for a 1–0 score. Unit tests additionally cover early/distant-hit rejection, direction selection, reachable vs. unreachable AI shots, reaction delay and contact positions at 30/60/120 FPS.
 
 `TEST_URL` can target a deployed subpath or local Vite preview. `CHROMIUM_EXECUTABLE_PATH` optionally selects an existing Chromium executable. Screenshots go to ignored `.artifacts/`. The smoke test covers model loading, start, keyboard movement/swing input, pause/resume, settings, restart, camera-denial fallback, and mobile overflow. It does not validate the physical accuracy of motion tracking or stroke mechanics. Live webcam recognition still requires manual testing on a camera-equipped device.

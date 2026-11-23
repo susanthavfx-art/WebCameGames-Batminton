@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
+import {SWING_DURATION, CONTACT} from './gameplay.js';
 
 const asset = name => `${import.meta.env.BASE_URL}models/${name}`;
 const V = (x,y,z) => new THREE.Vector3(x,y,z);
@@ -16,7 +17,7 @@ export function createArena(canvas, report) {
   scene.background = new THREE.Color('#162b59');
   scene.fog = new THREE.Fog('#20385d', 24, 65);
   const camera = new THREE.PerspectiveCamera(48,1,.1,100);
-  camera.position.set(0,5.5,13.5); camera.lookAt(0,1,-.6);
+  camera.position.set(0,3.8,13.8); camera.lookAt(0,1.25,-.6);
   scene.add(new THREE.HemisphereLight(0xb6e5ff,0x41445c,2.5));
   const sun = new THREE.DirectionalLight(0xfff0d8,3);
   sun.position.set(-6,14,6); sun.castShadow=true;
@@ -83,7 +84,7 @@ export function createArena(canvas, report) {
   }catch(error){failed=true;console.error('3D model loading failed',error);report('A 3D asset could not load. Reload to retry.',true)}}
   init();
   const offset=new THREE.Quaternion();
-  function pose(a,x,z,t,swingEnd,dt){const velocity=dt>0?(x-a.previous)/dt:0;a.previous=x;const movement=Math.min(1,Math.abs(velocity)*2);const stride=Math.sin(t*14)*movement;const p=Math.max(0,Math.min(1,1-(swingEnd-t)/.32));const hit=swingEnd>t?Math.sin(p*Math.PI):0;
+  function pose(a,x,z,t,swingEnd,dt,contact){const velocity=dt>0?(x-a.previous)/dt:0;a.previous=x;const movement=Math.min(1,Math.abs(velocity)*2);const stride=Math.sin(t*14)*movement;const p=Math.max(0,Math.min(1,1-(swingEnd-t)/SWING_DURATION));const hit=swingEnd>t?Math.sin(p*Math.PI):0;
     a.root.position.set(x*3.05,Math.abs(stride)*.045,z);a.ring.position.x=x*3.05;a.ring.position.z=z;
     const rotate=(name,rx=0,ry=0,rz=0)=>{const b=a.bones[name];if(!b)return;offset.setFromEuler(new THREE.Euler(rx,ry,rz));b.bone.quaternion.copy(b.rest).multiply(offset)};
     rotate('Spine',.04+Math.sin(t*2)*.012,hit*-.35,-velocity*.025);
@@ -100,8 +101,55 @@ export function createArena(canvas, report) {
     aimBone('LeftForeArm','LeftHand',V(-side*.3,-.35,forward*.65));
     aimBone('RightArm','RightForeArm',V(side*.55,-.7+hit*1.65,forward*(.15-hit*.4)));
     aimBone('RightForeArm','RightHand',V(side*.25,.35+hit*.5,forward*(.8-hit*1.1)));
-    const hand=a.bones.RightHand?.bone;if(hand){hand.getWorldPosition(a.racket.position);a.racket.quaternion.setFromEuler(new THREE.Euler(hit*forward*1.2,a.isBot?Math.PI:0,-side*(.35+hit*1.3)));}
+    const hand=a.bones.RightHand?.bone;
+    if(hand){
+      // At contact, solve shoulder/elbow/wrist to the SAME endpoint used by flight
+      // physics. The racket string-bed center (0, .70, 0) meets the cork exactly.
+      if(contact){
+        const shoulder=a.bones.RightArm.bone,elbow=a.bones.RightForeArm.bone;
+        const origin=shoulder.getWorldPosition(V(0,0,0));
+        const ep=elbow.getWorldPosition(V(0,0,0)),hp=hand.getWorldPosition(V(0,0,0));
+        const upper=origin.distanceTo(ep),lower=ep.distanceTo(hp);
+        const end=V(contact.x,contact.y,contact.z);
+        let direction=V(side*.2,.8,forward*.3).normalize();
+        let grip=end.clone().addScaledVector(direction,-.70);
+        if(grip.distanceTo(origin)>upper+lower-.005){direction=end.clone().sub(origin).normalize();grip=end.clone().addScaledVector(direction,-.70);}
+        const axis=grip.clone().sub(origin),distance=axis.length();axis.normalize();
+        const d=THREE.MathUtils.clamp(distance,Math.abs(upper-lower)+.001,upper+lower-.001);
+        const along=(upper*upper-lower*lower+d*d)/(2*d);
+        const bend=V(side,0,forward*.3);bend.addScaledVector(axis,-bend.dot(axis)).normalize();
+        const elbowTarget=origin.clone().addScaledVector(axis,along).addScaledVector(bend,Math.sqrt(Math.max(0,upper*upper-along*along)));
+        aimBone('RightArm','RightForeArm',elbowTarget.clone().sub(origin));
+        aimBone('RightForeArm','RightHand',grip.clone().sub(elbow.getWorldPosition(V(0,0,0))));
+        a.racket.quaternion.setFromUnitVectors(V(0,1,0),direction);
+        a.racket.rotateY((contact.angle||0)*.65);
+        a.racket.position.copy(grip);
+      }else{
+        hand.getWorldPosition(a.racket.position);
+        a.racket.quaternion.setFromEuler(new THREE.Euler(hit*forward*1.2,a.isBot?Math.PI:0,-side*(.35+hit*1.3)));
+      }
+    }
 
   }
-  return {resize(w,h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.set(0,w/h<1?8:5.5,w/h<1?20:13.5);camera.lookAt(0,1,-.6);camera.updateProjectionMatrix()},render(state){if(contextLost)return;const {player,bot,clock,swingTime,botSwing,shuttle:s,dt,paused}=state;actors.forEach((a,i)=>pose(a,i?bot:player,i?-5.1:5.6,clock,i?botSwing:swingTime,paused?0:dt));shuttle.visible=!!s;trail.visible=!!s;if(s){shuttle.position.set(s.x*3.05,.9+Math.sin(Math.PI*Math.max(0,Math.min(1,s.z)))*2.9,6.7-s.z*13.4);shuttle.rotation.x=s.vz>0?-.8:.8;if(!paused){history.push(shuttle.position.clone());if(history.length>18)history.shift();}trailGeometry.setFromPoints(history);}else history.length=0;renderer.render(scene,camera)},get ready(){return ready},get failed(){return failed}};
+  let lastFlight=-1;
+  const flash=mesh(new THREE.SphereGeometry(.13,12,8),new THREE.MeshBasicMaterial({color:'#bafaff',transparent:true,opacity:.8}));flash.visible=false;
+  return {
+    resize(w,h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.set(0,w/h<1?5.8:3.8,w/h<1?20:13.8);camera.lookAt(0,1.25,-.6);camera.updateProjectionMatrix()},
+    render(state){
+      if(contextLost)return;
+      const {player,bot,clock,swingTime,botSwing,shuttle:s,dt,paused,contacts=[]}=state;
+      actors.forEach((a,i)=>pose(a,i?bot:player,i?-5.1:5.6,clock,i?botSwing:swingTime,paused?0:dt,contacts[i]));
+      shuttle.visible=!!s;trail.visible=!!s;flash.visible=false;
+      if(s){
+        if(lastFlight!==s.id){history.length=0;lastFlight=s.id;}
+        shuttle.position.set(s.x*3.05,s.y,6.7-s.z*13.4);
+        shuttle.rotation.x=s.vz>0?-.8:.8;
+        if(!paused){history.push(shuttle.position.clone());if(history.length>18)history.shift();}
+        trailGeometry.setFromPoints(history);
+        if(s.elapsed<.09&&s.missed===undefined){flash.visible=true;flash.position.set(s.startX*3.05,CONTACT.height,6.7-s.startZ*13.4);flash.scale.setScalar(1+s.elapsed*8);flash.material.opacity=.8*(1-s.elapsed/.09);}
+      }else history.length=0;
+      renderer.render(scene,camera);
+    },
+    get ready(){return ready},get failed(){return failed}
+  };
 }
