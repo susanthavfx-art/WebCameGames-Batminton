@@ -54,6 +54,7 @@ For a custom domain served at the root, use `VITE_BASE_PATH=/` for both the buil
 - Enable the camera, grant permission and stand back with your shoulders and hands visible. Body position controls lateral movement; a quick movement of either hand triggers a swing. No physical racket is necessary. Ensure you have a safe, clear space.
 - Settings provide three bot speeds and 11-point quick or 21-point standard matches. Rally scoring, win by two, caps of 15/30 respectively.
 - Pause, restart, optional synthesized hit sounds and court fullscreen are available.
+- **Crowd cheers:** click the speaker button to enable sound (muted by default). Every blue-player point, including the winning point, triggers a short stereo applause/cheer effect. Red-player points do not trigger it. The effect is synthesized locally with Web Audio, not a recording or spoken voice. It fades out before the next serve; mute, pause, reset and hiding the tab stop it, and repeated points cannot stack cheers. Sound must be enabled through a click because of browser autoplay restrictions.
 
 ## Privacy and limitations
 
